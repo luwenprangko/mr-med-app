@@ -1,0 +1,23 @@
+{
+	"rooms": [
+		{
+			"id": "ff3e",
+			"name": "CS Delivery",
+			"description": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorem iusto nesciunt sunt labore! Dolorem eligendi nisi commodi? Ullam in deserunt accusantium quam voluptas iure dolor obcaecati provident, aliquid delectus asperiores.",
+			"maxParticipants": 12,
+			"participants": 12
+		}
+	],
+	"questions": [
+		{
+			"id": "",
+			"question": "",
+			"choices1": "",
+			"choices2": "",
+			"choices3": "",
+			"choices4": "",
+			"correctAnswer": "",
+			"time": ""
+		}
+	]
+}
