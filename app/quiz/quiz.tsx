@@ -1,63 +1,85 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle } from "lucide-react";
 
+interface Question {
+	id: string;
+	question: string;
+	choices1: string;
+	choices2: string;
+	choices3: string;
+	choices4: string;
+	correctAnswer: string;
+	time: string;
+}
+
 export default function QuizPage() {
-	// Configurable time in seconds - change this value to adjust the timer
-	const totalTime = 10;
+	// Fetch questions from the JSON Server
+	const {
+		data: questions,
+		isLoading,
+		error,
+	} = useQuery<Question[]>({
+		queryKey: ["questions"],
+		queryFn: async () => {
+			const res = await axios.get("http://localhost:3001/questions");
+			return res.data;
+		},
+	});
+
+	// Track current question index and overall score.
+	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+	const [cumulativeScore, setCumulativeScore] = useState(0);
+
+	// Derived current question or null if not available.
+	const questionData: Question | null =
+		questions && questions.length > 0 && currentQuestionIndex < questions.length
+			? questions[currentQuestionIndex]
+			: null;
+
+	// Get question timer value or default to 10 sec.
+	const defaultTime = 10;
+	const parsedTime = questionData
+		? parseFloat(questionData.time) || defaultTime
+		: defaultTime;
+
+	// States for quiz and timer.
 	const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-	const [timeRemaining, setTimeRemaining] = useState(totalTime);
+	const [timeRemaining, setTimeRemaining] = useState(parsedTime);
 	const [isTimerActive, setIsTimerActive] = useState(true);
 	const [isSubmitted, setIsSubmitted] = useState(false);
 	const [isCompleted, setIsCompleted] = useState(false);
 	const [timeBonus, setTimeBonus] = useState(0);
 	const [answerScore, setAnswerScore] = useState(0);
-	const [totalScore, setTotalScore] = useState(0);
 
-	// The correct answer
-	const correctAnswer = "paris";
+	// Progress bar state: 0 means no segment filled, up to 3 segments.
+	const [progressStage, setProgressStage] = useState(0);
 
-	const handleAnswerChange = (value: string) => {
-		if (!isSubmitted) {
-			setSelectedAnswer(value);
+	// When a new question loads, reset all states.
+	useEffect(() => {
+		if (questionData) {
+			setTimeRemaining(parsedTime);
+			setIsTimerActive(true);
+			setIsSubmitted(false);
+			setIsCompleted(false);
+			setSelectedAnswer(null);
+			setTimeBonus(0);
+			setAnswerScore(0);
+			setProgressStage(0);
 		}
-	};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [questionData]);
 
-	const calculateTimeBonus = () => {
-		// Calculate time bonus: max 400 points, decreasing to 0 as time runs out
-		const calculatedBonus = Math.floor((timeRemaining / totalTime) * 400);
-		return calculatedBonus;
-	};
-
-	const handleSubmit = () => {
-		if (!isSubmitted && selectedAnswer) {
-			setIsSubmitted(true);
-
-			// Calculate and store the time bonus (only if answer is correct)
-			const isCorrect = selectedAnswer === correctAnswer;
-			const bonus = isCorrect ? calculateTimeBonus() : 0;
-			setTimeBonus(bonus);
-
-			// Calculate answer score (600 if correct, 0 if wrong)
-			const score = isCorrect ? 600 : 0;
-			setAnswerScore(score);
-
-			// Calculate total score
-			setTotalScore(bonus + score);
-
-			// Keep the timer running until it completes
-			// The results will be displayed after the timer runs out
-		}
-	};
-
+	// Timer effect for the question.
 	useEffect(() => {
 		if (!isTimerActive) {
-			// Timer has stopped, show the results
 			setIsCompleted(true);
 			return;
 		}
@@ -76,13 +98,85 @@ export default function QuizPage() {
 		return () => clearInterval(timer);
 	}, [isTimerActive]);
 
-	// Calculate timer bar width as a percentage
-	const timerWidth = `${(timeRemaining / totalTime) * 100}%`;
+	// Calculate bonus points based on remaining time.
+	const calculateTimeBonus = () => {
+		return Math.floor((timeRemaining / parsedTime) * 400);
+	};
+
+	// Handle answer selection.
+	const handleAnswerChange = (value: string) => {
+		if (!isSubmitted) {
+			setSelectedAnswer(value);
+		}
+	};
+
+	// When answer is submitted, calculate score.
+	const handleSubmit = () => {
+		if (!isSubmitted && selectedAnswer && questionData) {
+			setIsSubmitted(true);
+			const isCorrect = selectedAnswer === questionData.correctAnswer;
+			const bonus = isCorrect ? calculateTimeBonus() : 0;
+			setTimeBonus(bonus);
+			const score = isCorrect ? 600 : 0;
+			setAnswerScore(score);
+			setCumulativeScore((prev) => prev + bonus + score);
+			// The progress bar will start after the question completes.
+		}
+	};
+
+	// After the question is completed, start the 3-part progress bar.
+	useEffect(() => {
+		if (isCompleted) {
+			// Timer to fill each progress bar segment.
+			const timer1 = setTimeout(() => setProgressStage(1), 2000);
+			const timer2 = setTimeout(() => setProgressStage(2), 4000);
+			const timer3 = setTimeout(() => setProgressStage(3), 6000);
+			// Additional 2-sec delay after green is visible.
+			const timer4 = setTimeout(() => {
+				if (questions && currentQuestionIndex < questions.length - 1) {
+					setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
+				}
+			}, 8000);
+
+			return () => {
+				clearTimeout(timer1);
+				clearTimeout(timer2);
+				clearTimeout(timer3);
+				clearTimeout(timer4);
+			};
+		}
+	}, [isCompleted, questions, currentQuestionIndex]);
+
+	// Calculate timer bar width.
+	const timerWidth = `${(timeRemaining / parsedTime) * 100}%`;
+
+	// Render loading or error states.
+	if (isLoading) {
+		return (
+			<div className="flex items-center justify-center h-screen">
+				Loading...
+			</div>
+		);
+	}
+
+	// If no more questions, show final summary.
+	if (error || (questions && currentQuestionIndex >= questions.length)) {
+		return (
+			<div className="flex min-h-screen items-center justify-center p-4">
+				<main className="w-full max-w-[600px] space-y-6 rounded-lg border p-6 shadow-sm">
+					<h2 className="text-xl font-semibold">Quiz Completed</h2>
+					<p className="text-muted-foreground">
+						Your final score is: {cumulativeScore}
+					</p>
+				</main>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex min-h-screen items-center justify-center p-4">
 			<main className="w-full max-w-[600px] space-y-6 rounded-lg border p-6 shadow-sm">
-				{/* Timer bar */}
+				{/* Timer Bar */}
 				<div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
 					<div
 						className={`h-full transition-all duration-100 ease-linear ${
@@ -92,20 +186,17 @@ export default function QuizPage() {
 					/>
 				</div>
 
-				{/* Top row - Question */}
+				{/* Question Header */}
 				<div className="w-full">
-					<h2 className="text-xl font-semibold">
-						What is the capital of France?
-					</h2>
+					<h2 className="text-xl font-semibold">{questionData?.question}</h2>
 					<p className="text-muted-foreground">
 						Select the correct answer from the options below.
 					</p>
 				</div>
 
-				{/* Conditional rendering: Show choices or scoring system */}
+				{/* Quiz Content or Result */}
 				{!isCompleted ? (
 					<>
-						{/* Answer options in a single column */}
 						<RadioGroup
 							value={selectedAnswer || ""}
 							onValueChange={handleAnswerChange}
@@ -115,24 +206,22 @@ export default function QuizPage() {
 							<div className="relative">
 								<Card
 									className={`cursor-pointer transition-all ${
-										selectedAnswer === "paris"
+										selectedAnswer === questionData?.choices1
 											? "border-primary ring-2 ring-primary"
 											: ""
 									}`}
-									onClick={() => handleAnswerChange("paris")}
+									onClick={() => handleAnswerChange(questionData!.choices1)}
 								>
 									<div className="absolute right-2 top-2">
 										<RadioGroupItem
-											value="paris"
-											id="paris"
+											value={questionData!.choices1}
+											id="choice1"
 											className="h-5 w-5"
 										/>
 									</div>
 									<CardContent className="p-4 pt-8 pb-6">
-										<Label htmlFor="paris" className="cursor-pointer block">
-											Paris - The City of Light is the capital and most populous
-											city of France, known for its art, fashion, gastronomy,
-											and culture.
+										<Label htmlFor="choice1" className="cursor-pointer block">
+											{questionData?.choices1}
 										</Label>
 									</CardContent>
 								</Card>
@@ -142,23 +231,22 @@ export default function QuizPage() {
 							<div className="relative">
 								<Card
 									className={`cursor-pointer transition-all ${
-										selectedAnswer === "london"
+										selectedAnswer === questionData?.choices2
 											? "border-primary ring-2 ring-primary"
 											: ""
 									}`}
-									onClick={() => handleAnswerChange("london")}
+									onClick={() => handleAnswerChange(questionData!.choices2)}
 								>
 									<div className="absolute right-2 top-2">
 										<RadioGroupItem
-											value="london"
-											id="london"
+											value={questionData!.choices2}
+											id="choice2"
 											className="h-5 w-5"
 										/>
 									</div>
 									<CardContent className="p-4 pt-8 pb-6">
-										<Label htmlFor="london" className="cursor-pointer block">
-											London - The capital and largest city of England and the
-											United Kingdom, standing on the River Thames.
+										<Label htmlFor="choice2" className="cursor-pointer block">
+											{questionData?.choices2}
 										</Label>
 									</CardContent>
 								</Card>
@@ -168,24 +256,22 @@ export default function QuizPage() {
 							<div className="relative">
 								<Card
 									className={`cursor-pointer transition-all ${
-										selectedAnswer === "berlin"
+										selectedAnswer === questionData?.choices3
 											? "border-primary ring-2 ring-primary"
 											: ""
 									}`}
-									onClick={() => handleAnswerChange("berlin")}
+									onClick={() => handleAnswerChange(questionData!.choices3)}
 								>
 									<div className="absolute right-2 top-2">
 										<RadioGroupItem
-											value="berlin"
-											id="berlin"
+											value={questionData!.choices3}
+											id="choice3"
 											className="h-5 w-5"
 										/>
 									</div>
 									<CardContent className="p-4 pt-8 pb-6">
-										<Label htmlFor="berlin" className="cursor-pointer block">
-											Berlin - The capital and largest city of Germany, known
-											for its cultural history, art scene, and modern
-											architecture.
+										<Label htmlFor="choice3" className="cursor-pointer block">
+											{questionData?.choices3}
 										</Label>
 									</CardContent>
 								</Card>
@@ -195,31 +281,29 @@ export default function QuizPage() {
 							<div className="relative">
 								<Card
 									className={`cursor-pointer transition-all ${
-										selectedAnswer === "madrid"
+										selectedAnswer === questionData?.choices4
 											? "border-primary ring-2 ring-primary"
 											: ""
 									}`}
-									onClick={() => handleAnswerChange("madrid")}
+									onClick={() => handleAnswerChange(questionData!.choices4)}
 								>
 									<div className="absolute right-2 top-2">
 										<RadioGroupItem
-											value="madrid"
-											id="madrid"
+											value={questionData!.choices4}
+											id="choice4"
 											className="h-5 w-5"
 										/>
 									</div>
 									<CardContent className="p-4 pt-8 pb-6">
-										<Label htmlFor="madrid" className="cursor-pointer block">
-											Madrid - The capital and most populous city of Spain,
-											located on the Manzanares River in the center of the
-											country.
+										<Label htmlFor="choice4" className="cursor-pointer block">
+											{questionData?.choices4}
 										</Label>
 									</CardContent>
 								</Card>
 							</div>
 						</RadioGroup>
 
-						{/* Submit button */}
+						{/* Submit Button */}
 						<Button
 							className="w-full"
 							disabled={!selectedAnswer || isSubmitted}
@@ -229,17 +313,17 @@ export default function QuizPage() {
 						</Button>
 					</>
 				) : (
-					/* Scoring System - Shown after timer completes */
+					// Display results for this question and the 3-part progress bar.
 					<div className="space-y-6 animate-fadeIn">
 						<div
 							className={`p-4 rounded-lg ${
-								selectedAnswer === correctAnswer
+								selectedAnswer === questionData?.correctAnswer
 									? "bg-green-50 border border-green-200"
 									: "bg-red-50 border border-red-200"
 							}`}
 						>
 							<div className="flex items-center gap-2 mb-2">
-								{selectedAnswer === correctAnswer ? (
+								{selectedAnswer === questionData?.correctAnswer ? (
 									<>
 										<CheckCircle2 className="h-5 w-5 text-green-500" />
 										<h3 className="font-medium text-green-700">
@@ -257,19 +341,19 @@ export default function QuizPage() {
 							</div>
 							<p
 								className={
-									selectedAnswer === correctAnswer
+									selectedAnswer === questionData?.correctAnswer
 										? "text-green-600"
 										: "text-red-600"
 								}
 							>
-								{selectedAnswer === correctAnswer
-									? "Great job! Paris is indeed the capital of France."
-									: `The correct answer is Paris, the capital of France. You selected ${selectedAnswer}.`}
+								{selectedAnswer === questionData?.correctAnswer
+									? "Great job! That is correct."
+									: `The correct answer is ${questionData?.correctAnswer}. You selected ${selectedAnswer}.`}
 							</p>
 						</div>
 
 						<div className="bg-gray-50 p-4 rounded-lg border">
-							<h3 className="font-medium mb-2">Your Score</h3>
+							<h3 className="font-medium mb-2">Your Score for this question</h3>
 							<div className="space-y-1">
 								<div className="flex justify-between">
 									<span>Answer Score:</span>
@@ -281,10 +365,29 @@ export default function QuizPage() {
 								</div>
 								<div className="h-px bg-gray-200 my-2"></div>
 								<div className="flex justify-between text-lg font-bold">
-									<span>Total Score:</span>
-									<span>{totalScore}</span>
+									<span>Total Score (Accumulated):</span>
+									<span>{cumulativeScore}</span>
 								</div>
 							</div>
+						</div>
+
+						{/* 3-Part Progress Bar */}
+						<div className="flex space-x-1 mt-4">
+							<div
+								className={`w-1/3 h-2 transition-all duration-500 ${
+									progressStage >= 1 ? "bg-red-500" : "bg-gray-300"
+								}`}
+							></div>
+							<div
+								className={`w-1/3 h-2 transition-all duration-500 ${
+									progressStage >= 2 ? "bg-orange-400" : "bg-gray-300"
+								}`}
+							></div>
+							<div
+								className={`w-1/3 h-2 transition-all duration-500 ${
+									progressStage >= 3 ? "bg-green-500" : "bg-gray-300"
+								}`}
+							></div>
 						</div>
 					</div>
 				)}
