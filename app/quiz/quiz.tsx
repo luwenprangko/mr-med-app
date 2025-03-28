@@ -128,15 +128,15 @@ export default function QuizPage() {
 	useEffect(() => {
 		if (isCompleted) {
 			// Timer to fill each progress bar segment.
-			const timer1 = setTimeout(() => setProgressStage(1), 2000);
-			const timer2 = setTimeout(() => setProgressStage(2), 4000);
-			const timer3 = setTimeout(() => setProgressStage(3), 6000);
+			const timer1 = setTimeout(() => setProgressStage(1), 1000);
+			const timer2 = setTimeout(() => setProgressStage(2), 2000);
+			const timer3 = setTimeout(() => setProgressStage(3), 3000);
 			// Additional 2-sec delay after green is visible.
 			const timer4 = setTimeout(() => {
 				if (questions && currentQuestionIndex < questions.length - 1) {
 					setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
 				}
-			}, 8000);
+			}, 4000);
 
 			return () => {
 				clearTimeout(timer1);
