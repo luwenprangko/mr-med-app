@@ -37,6 +37,7 @@ export default function QuizPage() {
 	// Track current question index and overall score.
 	const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 	const [cumulativeScore, setCumulativeScore] = useState(0);
+	const [isQuizCompleted, setIsQuizCompleted] = useState(false);
 
 	// Derived current question or null if not available.
 	const questionData: Question | null =
@@ -133,8 +134,12 @@ export default function QuizPage() {
 			const timer3 = setTimeout(() => setProgressStage(3), 3000);
 			// Additional 2-sec delay after green is visible.
 			const timer4 = setTimeout(() => {
-				if (questions && currentQuestionIndex < questions.length - 1) {
-					setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
+				if (isCompleted) {
+					if (questions && currentQuestionIndex < questions.length - 1) {
+						setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
+					} else {
+						setIsQuizCompleted(true); // Set quiz as completed when all questions are done
+					}
 				}
 			}, 4000);
 
@@ -155,20 +160,6 @@ export default function QuizPage() {
 		return (
 			<div className="flex items-center justify-center h-screen">
 				Loading...
-			</div>
-		);
-	}
-
-	// If no more questions, show final summary.
-	if (error || (questions && currentQuestionIndex >= questions.length)) {
-		return (
-			<div className="flex min-h-screen items-center justify-center p-4">
-				<main className="w-full max-w-[600px] space-y-6 rounded-lg border p-6 shadow-sm">
-					<h2 className="text-xl font-semibold">Quiz Completed</h2>
-					<p className="text-muted-foreground">
-						Your final score is: {cumulativeScore}
-					</p>
-				</main>
 			</div>
 		);
 	}
@@ -389,6 +380,31 @@ export default function QuizPage() {
 								}`}
 							></div>
 						</div>
+					</div>
+				)}
+				{isQuizCompleted && (
+					<div className="space-y-6 animate-fadeIn">
+						<div className="bg-gray-50 p-4 rounded-lg border">
+							<h3 className="font-medium mb-2">Quiz Completed!</h3>
+							<div className="space-y-1">
+								<div className="flex justify-between">
+									<span>Total Cumulative Score:</span>
+									<span className="font-medium">{cumulativeScore}</span>
+								</div>
+								<div className="flex justify-between">
+									<span>Time Bonus Total:</span>
+									<span className="font-medium">{timeBonus}</span>
+								</div>
+								<div className="h-px bg-gray-200 my-2"></div>
+								<div className="flex justify-between text-lg font-bold">
+									<span>Your Final Score:</span>
+									<span>{cumulativeScore}</span>
+								</div>
+							</div>
+						</div>
+						<Button onClick={() => window.location.reload()} className="w-full">
+							Try Again
+						</Button>
 					</div>
 				)}
 			</main>
