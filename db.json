@@ -1,35 +1,56 @@
 {
-	"rooms": [],
-	"questions": [
-		{
-			"id": "1",
-			"question": "Sample Question1?",
-			"choices1": "a",
-			"choices2": "b",
-			"choices3": "c",
-			"choices4": "d",
-			"correctAnswer": "a",
-			"time": "5"
-		},
-		{
-			"id": "2",
-			"question": "Sample Question2?",
-			"choices1": "a",
-			"choices2": "b",
-			"choices3": "c",
-			"choices4": "d",
-			"correctAnswer": "b",
-			"time": "5"
-		},
-		{
-			"id": "3",
-			"question": "Sample Question3?",
-			"choices1": "a",
-			"choices2": "b",
-			"choices3": "c",
-			"choices4": "d",
-			"correctAnswer": "c",
-			"time": "5"
-		}
-	]
+  "rooms": [
+    {
+      "id": "cd46",
+      "name": "Sample Room",
+      "description": "Lorem ipsum",
+      "maxParticipants": 12,
+      "participants": 12
+    },
+    {
+      "id": "ad5d",
+      "name": "qweqwe",
+      "description": "qweqweqweqwe",
+      "maxParticipants": 5,
+      "participants": 0
+    }
+  ],
+  "questions": {
+    "item": {
+      "sub-room-id": [
+        {
+          "id": "1",
+          "question": "Sample Question1?",
+          "choices1": "a",
+          "choices2": "b",
+          "choices3": "c",
+          "choices4": "d",
+          "correctAnswer": "a",
+          "time": "5"
+        },
+        {
+          "id": "2",
+          "question": "Sample Question2?",
+          "choices1": "a",
+          "choices2": "b",
+          "choices3": "c",
+          "choices4": "d",
+          "correctAnswer": "b",
+          "time": "5"
+        }
+      ]
+    },
+    "ad5d": [
+      {
+        "id": "1",
+        "question": "qwe",
+        "choices1": "a",
+        "choices2": "z",
+        "choices3": "x",
+        "choices4": "v",
+        "correctAnswer": "v",
+        "time": "5"
+      }
+    ]
+  }
 }
